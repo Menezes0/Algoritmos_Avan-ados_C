@@ -1,0 +1,72 @@
+#include <stdio.h>
+//criação função para limparPilha e qualquer tamanho
+void limparPilha(int pilha[], int tam)
+{
+    
+    for(int i=0;i<tam;i++)
+        pilha[i] = -1;
+    
+}
+
+//criação função para imprimir toda a Pilha
+
+void imprimirPilha(int pilha[], int tam)
+{
+    for(int i=0; i<tam;i++)
+        printf("%d \n", pilha[i]);
+}
+
+// criação função para acrescentar a pilha
+void empilhar(int pilha[], int tam, int n)
+{
+    for(int i=0;i<tam;i++)
+    {
+        if (pilha[i] == -1)
+        {
+            pilha[i] = n;
+            return;
+        }
+    }
+    printf("Pilha cheia\n");
+}
+
+// criação função para desempilhar a pilha
+
+void desempilhar(int pilha[], int tam)
+{
+    for(int i=0;i<tam;i++)
+    {
+        if ((i + 1) == tam)
+        {
+            printf("Numero retirado %d", pilha[i]);
+            pilha[i] = -1;
+            return;
+        }
+        
+        if (pilha[i+1] == -1)
+        {
+            printf("Numero retirado: %d", pilha[i]);
+            pilha[i] = -1;
+            return;
+        }
+    }
+}
+int main()
+{
+    int pilha[5];
+
+    limparPilha(pilha, 5);
+
+    imprimirPilha(pilha, 5);
+    
+    empilhar(pilha, 5, 10);
+    empilhar(pilha, 5, 15);
+    empilhar(pilha, 5, 33);
+    empilhar(pilha, 5, 90);
+    empilhar(pilha, 5, 100);
+    
+    empilhar(pilha, 5, 1);
+    
+    imprimirPilha(pilha, 5);
+    return 0;
+}
