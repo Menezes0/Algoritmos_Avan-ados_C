@@ -1,0 +1,33 @@
+#include <stdio.h>
+//criando uma struct chamda tAluno.
+struct tAluno{
+        int matricula;
+        float p1, p2;
+};
+
+//redefinindo nome da struct para 'tAluno' apenas.
+typedef struct tAluno tAluno;
+    
+    
+int main()
+{
+    //declarando uma varialvel tAluno.
+    tAluno aluno;
+    float media = 0;
+    
+    printf("Informe o numero de matricula: ");
+    scanf("%d", &aluno.matricula); //nome da variavel e nome da varialvel membro da struct
+
+    printf("informe a primeira nota: ");
+    scanf("%f", &aluno.p1);
+    
+    printf("informe a segunda nota: ");
+    scanf("%f", &aluno.p2);
+    
+    media = (aluno.p1 + aluno.p2)/2;
+    
+    
+    printf("\nMatricula...: %d\n", aluno.matricula);
+    printf("Media...: %.2f\n", media);
+    return 0;
+}
