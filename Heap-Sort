@@ -1,1 +1,298 @@
+/*
+ * Comparação de algoritmos de ordenação: Heap Sort (Max-Heap),
+ * Bubble Sort e Selection Sort.
+ *
+ * Compilar (Linux/macOS/MinGW):  gcc -O2 -Wall -Wextra -o heap_sort heap_sort.c
+ * Executar:                      ./heap_sort
+ *
+ * O programa:
+ *  1) pede o tamanho do vetor e o número de repetições;
+ *  2) a cada repetição gera um vetor aleatório e cria 3 cópias idênticas;
+ *  3) ordena cada cópia com um algoritmo, medindo SOMENTE a ordenação;
+ *  4) confere, com estaOrdenado(), se cada vetor ficou ordenado;
+ *  5) mostra o tempo médio de cada algoritmo.
+ */
 
+#define _POSIX_C_SOURCE 199309L   /* necessário para clock_gettime em Linux */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+/* Só imprimimos o vetor inteiro se ele tiver no máximo este tamanho. */
+#define LIMITE_IMPRESSAO 20
+
+/* Números aleatórios ficam no intervalo [0, VALOR_MAXIMO - 1]. */
+#define VALOR_MAXIMO 100000
+
+/* ======================================================================
+ * MEDIÇÃO DE TEMPO
+ * Devolve o "agora" em milissegundos, usando um relógio monotônico
+ * (que não é afetado por mudanças na hora do sistema).
+ * ====================================================================== */
+double agora_ms(void)
+{
+#ifdef _WIN32
+    LARGE_INTEGER freq, cont;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&cont);
+    return (double)cont.QuadPart * 1000.0 / (double)freq.QuadPart;
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000.0 + ts.tv_nsec / 1000000.0;
+#endif
+}
+
+/* ======================================================================
+ * FUNÇÕES AUXILIARES
+ * ====================================================================== */
+
+/* Troca dois inteiros de posição. */
+void trocar(int *a, int *b)
+{
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+/* Preenche o vetor com inteiros aleatórios. */
+void gerarAleatorio(int v[], int n)
+{
+    for (int i = 0; i < n; i++)
+        v[i] = rand() % VALOR_MAXIMO;
+}
+
+/* Copia o vetor origem para o vetor destino. */
+void copiarVetor(const int origem[], int destino[], int n)
+{
+    memcpy(destino, origem, (size_t)n * sizeof(int));
+}
+
+/* Imprime o vetor somente se ele for pequeno. */
+void imprimirVetor(const char *titulo, const int v[], int n)
+{
+    if (n > LIMITE_IMPRESSAO) {
+        printf("%s: (vetor com %d elementos, não impresso)\n", titulo, n);
+        return;
+    }
+    printf("%s: ", titulo);
+    for (int i = 0; i < n; i++)
+        printf("%d ", v[i]);
+    printf("\n");
+}
+
+/* Verifica se o vetor está em ordem crescente. Retorna 1 (sim) ou 0 (não). */
+int estaOrdenado(const int v[], int n)
+{
+    for (int i = 0; i < n - 1; i++)
+        if (v[i] > v[i + 1])
+            return 0;
+    return 1;
+}
+
+/* ======================================================================
+ * HEAP SORT (Max-Heap)
+ * Vetor de n posições (0 a n-1) visto como árvore binária:
+ *   filho esquerdo de i = 2*i + 1
+ *   filho direito  de i = 2*i + 2
+ *   pai            de i = (i - 1) / 2
+ * ====================================================================== */
+
+/*
+ * heapify: faz o elemento da posição i "descer" até o lugar certo,
+ * supondo que as subárvores dos seus filhos já são max-heaps.
+ * n = tamanho da parte do vetor que ainda faz parte do heap.
+ */
+void heapify(int v[], int n, int i)
+{
+    int maior = i;          /* começa assumindo que o pai é o maior */
+    int esq = 2 * i + 1;    /* índice do filho esquerdo */
+    int dir = 2 * i + 2;    /* índice do filho direito  */
+
+    /* O filho só existe se o índice dele for menor que n. */
+    if (esq < n && v[esq] > v[maior])
+        maior = esq;
+    if (dir < n && v[dir] > v[maior])
+        maior = dir;
+
+    /* Se algum filho for maior que o pai, troca e continua descendo. */
+    if (maior != i) {
+        trocar(&v[i], &v[maior]);
+        heapify(v, n, maior);
+    }
+}
+
+/*
+ * buildHeap: transforma um vetor qualquer em um max-heap.
+ * Começa no último nó que tem filho (n/2 - 1) e vai até a raiz (0),
+ * aplicando heapify em cada um. Nós folha já são heaps triviais.
+ */
+void buildHeap(int v[], int n)
+{
+    for (int i = n / 2 - 1; i >= 0; i--)
+        heapify(v, n, i);
+}
+
+/*
+ * heapSort: 1) constrói o max-heap;
+ *           2) repete: troca a raiz (maior) com o último elemento do heap,
+ *              diminui o heap em 1 e restaura a propriedade com heapify.
+ */
+void heapSort(int v[], int n)
+{
+    buildHeap(v, n);
+
+    for (int fim = n - 1; fim > 0; fim--) {
+        trocar(&v[0], &v[fim]);   /* maior elemento vai para sua posição final */
+        heapify(v, fim, 0);       /* heap agora tem "fim" elementos */
+    }
+}
+
+/* ======================================================================
+ * BUBBLE SORT
+ * Compara vizinhos e troca se estiverem fora de ordem. A cada passada,
+ * o maior elemento restante "flutua" para o final.
+ * ====================================================================== */
+void bubbleSort(int v[], int n)
+{
+    for (int i = 0; i < n - 1; i++) {
+        int trocou = 0;
+        for (int j = 0; j < n - 1 - i; j++) {
+            if (v[j] > v[j + 1]) {
+                trocar(&v[j], &v[j + 1]);
+                trocou = 1;
+            }
+        }
+        if (!trocou)    /* nenhuma troca: vetor já está ordenado */
+            break;
+    }
+}
+
+/* ======================================================================
+ * SELECTION SORT
+ * A cada passo, procura o menor elemento da parte não ordenada e o
+ * coloca na posição i.
+ * ====================================================================== */
+void selectionSort(int v[], int n)
+{
+    for (int i = 0; i < n - 1; i++) {
+        int menor = i;
+        for (int j = i + 1; j < n; j++)
+            if (v[j] < v[menor])
+                menor = j;
+        if (menor != i)
+            trocar(&v[i], &v[menor]);
+    }
+}
+
+/* ======================================================================
+ * PROGRAMA PRINCIPAL
+ * ====================================================================== */
+int main(void)
+{
+    int n, repeticoes;
+
+    /* ---- Entrada de dados pelo usuário ---- */
+    printf("Tamanho do vetor: ");
+    if (scanf("%d", &n) != 1 || n <= 0) {
+        printf("Tamanho inválido. Informe um inteiro positivo.\n");
+        return 1;
+    }
+    printf("Quantidade de repetições: ");
+    if (scanf("%d", &repeticoes) != 1 || repeticoes <= 0) {
+        printf("Número de repetições inválido. Informe um inteiro positivo.\n");
+        return 1;
+    }
+
+    /* ---- Alocação dinâmica: 1 vetor original + 3 cópias ---- */
+    int *original  = malloc((size_t)n * sizeof(int));
+    int *copiaHeap = malloc((size_t)n * sizeof(int));
+    int *copiaBub  = malloc((size_t)n * sizeof(int));
+    int *copiaSel  = malloc((size_t)n * sizeof(int));
+
+    if (!original || !copiaHeap || !copiaBub || !copiaSel) {
+        printf("Erro: memória insuficiente.\n");
+        free(original); free(copiaHeap); free(copiaBub); free(copiaSel);
+        return 1;
+    }
+
+    printf("\n========================================\n");
+    printf("COMPARAÇÃO DE ALGORITMOS DE ORDENAÇÃO\n");
+    printf("========================================\n");
+    printf("Tamanho do vetor: %d\n", n);
+    printf("Repetições: %d\n", repeticoes);
+
+    srand((unsigned int)time(NULL));   /* semente: executada uma única vez */
+
+    double totalHeap = 0.0, totalBub = 0.0, totalSel = 0.0;
+
+    /* Cada flag começa em 1 (OK) e vira 0 se falhar em QUALQUER repetição. */
+    int okHeap = 1, okBub = 1, okSel = 1;
+
+    for (int r = 1; r <= repeticoes; r++) {
+
+        /* Geração e cópias FICAM FORA da medição de tempo. */
+        gerarAleatorio(original, n);
+        copiarVetor(original, copiaHeap, n);
+        copiarVetor(original, copiaBub,  n);
+        copiarVetor(original, copiaSel,  n);
+
+        /* ---- Heap Sort: cronometra somente a chamada de ordenação ---- */
+        double inicio = agora_ms();
+        heapSort(copiaHeap, n);
+        double fim = agora_ms();
+        totalHeap += fim - inicio;
+
+        /* ---- Bubble Sort ---- */
+        inicio = agora_ms();
+        bubbleSort(copiaBub, n);
+        fim = agora_ms();
+        totalBub += fim - inicio;
+
+        /* ---- Selection Sort ---- */
+        inicio = agora_ms();
+        selectionSort(copiaSel, n);
+        fim = agora_ms();
+        totalSel += fim - inicio;
+
+        /* ---- Verificação (fora do cronômetro) ---- */
+        if (!estaOrdenado(copiaHeap, n)) okHeap = 0;
+        if (!estaOrdenado(copiaBub,  n)) okBub  = 0;
+        if (!estaOrdenado(copiaSel,  n)) okSel  = 0;
+
+        /* Impressão (apenas na 1ª repetição e só se o vetor for pequeno). */
+        if (r == 1) {
+            printf("\n--- VETORES (1ª repetição) ---\n");
+            imprimirVetor("Original      ", original, n);
+            imprimirVetor("Heap Sort     ", copiaHeap, n);
+            imprimirVetor("Bubble Sort   ", copiaBub,  n);
+            imprimirVetor("Selection Sort", copiaSel,  n);
+        }
+    }
+
+    /* ---- Resultados: média = soma dos tempos / número de repetições ---- */
+    printf("\n--- RESULTADOS ---\n");
+    printf("Tempo médio Heap Sort     : %.3f ms\n", totalHeap / repeticoes);
+    printf("Tempo médio Bubble Sort   : %.3f ms\n", totalBub  / repeticoes);
+    printf("Tempo médio Selection Sort: %.3f ms\n", totalSel  / repeticoes);
+
+    printf("\n--- VERIFICAÇÃO (todas as repetições) ---\n");
+    printf("Heap Sort     : %s\n", okHeap ? "OK" : "FALHOU");
+    printf("Bubble Sort   : %s\n", okBub  ? "OK" : "FALHOU");
+    printf("Selection Sort: %s\n", okSel  ? "OK" : "FALHOU");
+    printf("========================================\n");
+
+    /* ---- Liberação da memória ---- */
+    free(original);
+    free(copiaHeap);
+    free(copiaBub);
+    free(copiaSel);
+
+    return 0;
+}
